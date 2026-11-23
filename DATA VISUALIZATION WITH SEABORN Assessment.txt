@@ -1,9 +1,3 @@
-================================================================================
-TOPS TECHNOLOGIES - DATA ANALYTICS ASSESSMENT (M10-A1)
-Modules 7-10: NumPy | Pandas | Matplotlib | Seaborn
-Complete Solutions (Sections A, B, C, and D)
-================================================================================
-
 --------------------------------------------------------------------------------
 SECTION A: CONCEPT APPLICATION
 --------------------------------------------------------------------------------
@@ -641,7 +635,7 @@ plt.savefig("food_delivery_correlation_heatmap.png", dpi=200)
 plt.close()
 
 
-4. EXPLANATION OF CHANGES (3-4 LINE NOTE):
+4. EXPLANATION OF CHANGES:
 ------------------------------------------
 In Pandas 2.x, calling df.corr() directly on a DataFrame containing the string
 column 'cuisine_type' raises a ValueError, so I added numeric_only=True to
