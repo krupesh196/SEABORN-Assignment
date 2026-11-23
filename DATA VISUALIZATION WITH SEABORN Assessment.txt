@@ -1,190 +1,91 @@
-================================================================================
-TOPS TECHNOLOGIES - DATA ANALYTICS ASSESSMENT (M10-A1)
-Modules 7-10: NumPy | Pandas | Matplotlib | Seaborn
-Complete Solutions (Sections A, B, C, and D)
-================================================================================
-
---------------------------------------------------------------------------------
 SECTION A: CONCEPT APPLICATION
---------------------------------------------------------------------------------
 
-SCENARIO 1: NumPy Vectorisation vs. Python Loops
-------------------------------------------------
-- Why vectorisation is superior:
-  A Python for-loop iterates through 50,000 elements one by one, incurring
-  interpreter overhead, dynamic type-checking, and memory reallocation (via
-  list.append()) on every iteration. NumPy vectorisation delegates the entire
-  arithmetic operation to pre-compiled, contiguous C loops that execute directly
-  on typed memory buffers, making it orders of magnitude faster and more
-  memory-efficient.
+Question 1:
+Using NumPy vectorisation is much better here than a Python for-loop because a regular loop processes all 50,000 distances one by one inside the Python interpreter. On every single iteration, Python has to check data types and grow the output list in memory, which gets slow very quickly. NumPy avoids this by running the calculation directly in pre-compiled C code over a contiguous block of memory.
 
-- Role of broadcasting:
-  When multiplying a 1D array of 50,000 distances by a single scalar (e.g., Rs 5),
-  broadcasting virtually stretches the scalar to match the shape (50000,) without
-  physically copying the scalar 50,000 times in memory, allowing element-wise
-  computation in a single expression.
+When we multiply the entire array by a single scalar rate like Rs 5 per km, NumPy broadcasting lets that single number act as if it were an array of 50,000 fives without actually copying it 50,000 times in memory. That keeps memory usage low and lets us write the whole calculation in one line.
 
-- When a Python loop is still necessary:
-  When each element's calculation depends sequentially on the result of the
-  previous element (e.g., a stateful running simulation or dynamic pricing where
-  order $i$'s surge fee depends on the cumulative driver availability updated by
-  order $i-1$), or when invoking external non-vectorisable functions such as API
-  calls or complex nested string/JSON parsing.
+That said, a Python loop is still needed when each step depends on the result of the previous step. For example, if the surge fee for order $i$ depends on how many drivers are still free after order $i-1$ was assigned, you cannot compute every order independently at the same time and have to loop through them sequentially.
 
 
-SCENARIO 2: Pandas groupby() + agg() vs. Manual Loops
------------------------------------------------------
-- Why groupby().agg() is superior:
-  Filtering a DataFrame inside a for-loop scans the entire dataset repeatedly
-  (once per unique restaurant), creating temporary DataFrame copies and scaling
-  poorly as the number of restaurants grows. groupby() uses a single-pass
-  hash-based split-apply-combine engine implemented in Cython/C, computing all
-  aggregations simultaneously in one pass.
+Question 2:
+Using groupby() with agg() is far better than looping over each restaurant because filtering a DataFrame inside a loop forces Pandas to scan the entire table repeatedly, once for every unique restaurant. That creates unnecessary temporary copies and slows down as the restaurant count grows. In contrast, groupby() groups all rows in a single pass using an internal hash table and computes all the aggregations together.
 
-- Method chain:
-  summary = df.groupby("restaurant_name").agg(
-      avg_order_value=("order_value", "mean"),
-      avg_delivery_time=("delivery_time_mins", "mean"),
-      avg_rating=("rating", "mean"),
-  )
+The method chain to get all three metrics in one go would look like this:
 
-- Resulting index:
-  After groupby("restaurant_name"), the resulting DataFrame's index represents
-  the unique values of restaurant_name (each row corresponds to one distinct
-  restaurant).
+result = df.groupby("restaurant_name").agg(
+    avg_order_value=("order_value", "mean"),
+    avg_delivery_time=("delivery_time_mins", "mean"),
+    avg_rating=("rating", "mean")
+)
+
+After running this operation, the index of the resulting DataFrame holds the unique restaurant names, so each row represents one restaurant.
 
 
-SCENARIO 3: Choosing Matplotlib Charts & plt.subplots()
--------------------------------------------------------
-- Chart choices and justifications:
-  (a) Total orders per month over a year -> Line Chart (ax.plot):
-      Best for continuous time-series data to highlight trends, seasonality,
-      and month-over-month trajectory.
-  (b) Proportion of orders by cuisine type -> Pie Chart (ax.pie) or Horizontal
-      Bar Chart (ax.barh):
-      A pie chart directly communicates part-to-whole percentages across 4
-      discrete categories (Fast Food, Indian, Chinese, Desserts).
-  (c) Distribution of delivery times -> Histogram (ax.hist):
-      Groups continuous numerical values into bins to reveal spread, central
-      tendency, skewness, and outliers.
+Question 3:
+For total orders per month over a year, a line chart is the best fit because the data is a time series and connecting the monthly points makes seasonal trends and growth easy to spot. For the proportion of orders by cuisine type, a pie chart works well since there are only four discrete categories and we specifically want to show each cuisine's share of the whole. For the distribution of delivery times, a histogram is the right choice because delivery time is continuous numeric data, and binning it shows the spread, central peak, and any skew or long tail.
 
-- Configuring plt.subplots():
-  Use fig, axes = plt.subplots(1, 3, figsize=(18, 5)) to create a 1-row,
-  3-column figure side by side, accessing each subplot via axes[0], axes[1],
-  and axes[2].
+To place all three charts side by side in a single figure, I would configure subplots as:
+fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+This creates one row with three columns, and each chart can be plotted on axes[0], axes[1], and axes[2].
 
-- Shared x-axis (sharex=True):
-  Not appropriate. Each chart has a completely different x-axis domain: months
-  (time), categorical proportions (no standard x-axis for a pie chart), and
-  delivery time in minutes (continuous numeric). Sharing an x-axis would distort
-  scales and break readability.
+A shared x-axis (sharex=True) would not make sense here because the three plots have completely unrelated x-axes: months of the year, cuisine proportions (which do not even use a standard x-axis in a pie chart), and delivery times in minutes. Forcing them to share one x-axis would break the scaling and make the charts unreadable.
 
 
-SCENARIO 4: Programmatic Peak Annotation with plt.annotate()
-------------------------------------------------------------
-- Programmatic identification:
-  Find the index of the maximum order volume using max_idx = np.argmax(orders),
-  then retrieve max_day = days[max_idx] and max_vol = orders[max_idx]. Pass
-  these coordinates directly into plt.annotate().
+Question 4:
+To mark the peak day automatically, I would first find its index using max_idx = np.argmax(orders), then grab the corresponding day (max_day = days[max_idx]) and order count (max_vol = orders[max_idx]). Then I would pass those values directly into plt.annotate() with a formatted string showing the day and volume.
 
-- Key parameters:
-  1. xy=(max_day, max_vol): Sets the exact (x, y) data coordinate of the peak
-     that the arrow tip points to.
-  2. xytext=(max_day + 5, max_vol - 50): Sets the (x, y) coordinate where the
-     text label (e.g., f"Day {max_day}: {max_vol} orders") is positioned so it
-     does not overlap the line.
-  3. arrowprops=dict(arrowstyle="->", color="red", lw=1.5): Controls the
-     presence, style, colour, and thickness of the arrow connecting xytext to xy.
+Two important parameters to pass are:
+1. xy=(max_day, max_vol): This sets the exact data point on the line chart that the arrow points to.
+2. xytext=(max_day + 5, max_vol - 40): This controls where the text label sits on the chart so it stays readable and does not sit directly on top of the line.
+We would also pass arrowprops (for example, arrowprops=dict(arrowstyle="->", color="red")) to draw and style the arrow connecting the text label to the peak.
 
 
-SCENARIO 5: sns.boxplot() vs. sns.violinplot()
-----------------------------------------------
-- Recommendation:
-  sns.boxplot() is better suited for this task.
+Question 5:
+For this dataset, I would recommend sns.boxplot() over sns.violinplot(). First, customer ratings are on a discrete 1 to 5 scale. A violin plot uses kernel density estimation to draw smooth curves, which creates artificial waves between whole numbers and can even extend past 1 and 5, making discrete ratings look continuous. Second, with 10,000 rows and 3 categories, the manager specifically wants to spot extreme outliers. A boxplot handles large row counts cleanly by summarizing the median and quartiles while plotting individual outlier points beyond $1.5 \times \text{IQR}$ right on the chart.
 
-- Two data-specific reasons:
-  1. Discrete 1-5 rating scale: A violin plot relies on Kernel Density
-     Estimation (KDE), which smooths data into continuous curves. On a discrete
-     1-5 integer scale, KDE creates artificial "bulges" and extends tails past
-     1 and 5, misrepresenting the discrete nature of the ratings.
-  2. Explicit outlier detection across 10,000 rows: The manager specifically
-     wants to see if any of the 3 categories produces more extreme outliers. A
-     boxplot explicitly plots individual outlier points beyond $1.5 \times \text{IQR}$
-     while cleanly summarizing medians and quartiles without visual clutter
-     across 10,000 rows.
-
-- When sns.violinplot() is preferable:
-  When analysing a continuous variable (such as delivery_time_mins or
-  order_value) where detecting multimodality (e.g., two distinct delivery-time
-  peaks for peak vs. off-peak hours) matters -- something a boxplot hides
-  completely.
+A violin plot would be the better option if we were looking at a truly continuous column like delivery time or order value, especially if we suspected the data had two separate peaks (multimodality), such as fast off-peak deliveries and slow peak-hour deliveries, which a boxplot cannot show.
 
 
-SCENARIO 6: Seaborn Correlation Heatmap & Multicollinearity
------------------------------------------------------------
-- Generation:
-  Compute the Pearson correlation matrix with corr = df.corr(numeric_only=True)
-  and plot it using sns.heatmap(corr, annot=True, cmap="coolwarm", vmin=-1, vmax=1).
+Question 6:
+To check for multicollinearity, I would compute the Pearson correlation matrix with corr = df.corr(numeric_only=True) and pass it into sns.heatmap(corr, annot=True, cmap="coolwarm", vmin=-1, vmax=1).
 
-- Colour scale:
-  Represents the strength and direction of the linear relationship ($r$ from -1.0
-  to +1.0). A diverging palette maps strong positive correlations to one extreme
-  (e.g., dark red), strong negative correlations to the other (e.g., dark blue),
-  and near-zero correlation to a neutral centre (white/grey).
+The colour scale represents both the direction and strength of the linear relationship between each pair of variables, ranging from -1 to +1. With a diverging palette like coolwarm, strong positive correlations appear dark red, strong negative correlations appear dark blue, and values near zero appear light or neutral. To read a specific cell, you look at the intersection of a row feature and a column feature; the number printed inside the cell is their Pearson correlation coefficient $r$.
 
-- Reading a cell:
-  Each cell at row $i$, column $j$ displays the Pearson correlation coefficient
-  $r$ between feature $i$ and feature $j$ (e.g., distance_km vs.
-  delivery_time_mins might read 0.84, indicating a strong positive linear
-  relationship).
-
-- Multicollinearity threshold:
-  Conventionally $|r| \ge 0.8$ (sometimes $|r| \ge 0.7$). Above this threshold,
-  two predictors share a large proportion of variance ($R^2 \ge 0.64$), which
-  inflates the variance of regression coefficients (high VIF), makes feature
-  weights unstable, and degrades model interpretability.
+Conventionally, a correlation magnitude of $|r| \ge 0.8$ (or sometimes $|r| \ge 0.7$) is used to flag a multicollinearity risk. At $|r| = 0.8$, the two variables share $R^2 = 0.64$ (64%) of their variance, which is high enough to inflate the variance of regression coefficients and make the model's feature weights unstable.
 
 
---------------------------------------------------------------------------------
 SECTION B: PRACTICAL CODING TASKS
---------------------------------------------------------------------------------
 
-=== TASK 1: Delivery Fee Array Calculator (section_b_task1.py) ===
+Task 1: Delivery Fee Array Calculator (section_b_task1.py)
 
 import numpy as np
 
-# 1. Generate 1D array of 25 random delivery distances (1.0 to 15.0 km), seed=42
 np.random.seed(42)
 distances = np.random.uniform(1.0, 15.0, size=25)
 
-# 2. Vectorised delivery fee calculation: fee = 20 + 5 * distance
 fees = 20 + 5 * distances
 
-# 3. Boolean indexing for orders where fee > Rs 60
-high_fee_mask = fees > 60
-qualifying_distances = distances[high_fee_mask]
-qualifying_fees = fees[high_fee_mask]
+mask = fees > 60
+qualifying_orders = np.column_stack((distances[mask], fees[mask]))
 
-print("=== Orders with Delivery Fee > Rs 60 ===")
-for idx, (dist, fee) in enumerate(zip(qualifying_distances, qualifying_fees), start=1):
-    print(f"Order {idx:2d}: Distance = {dist:5.2f} km | Fee = Rs {fee:6.2f}")
+print("Orders with delivery fee > Rs 60 (Distance km, Fee Rs):")
+print(np.round(qualifying_orders, 2))
 
-# 4. Statistical summary of complete fee array
-print("\n=== Complete Fee Array Statistics ===")
-print(f"Minimum Fee : Rs {np.min(fees):.2f}")
-print(f"Maximum Fee : Rs {np.max(fees):.2f}")
-print(f"Mean Fee    : Rs {np.mean(fees):.2f}")
-print(f"Std Dev Fee : Rs {np.std(fees):.2f}")
+print("\nComplete Fee Array Statistics:")
+print(f"Minimum: Rs {np.min(fees):.2f}")
+print(f"Maximum: Rs {np.max(fees):.2f}")
+print(f"Mean: Rs {np.mean(fees):.2f}")
+print(f"Standard Deviation: Rs {np.std(fees):.2f}")
 
 
-=== TASK 2: Restaurant Performance Analyser (section_b_task2.py) ===
+Task 2: Restaurant Performance Analyser (section_b_task2.py)
 
 import numpy as np
 import pandas as pd
 
 np.random.seed(42)
 
-# 1. Construct a 50-row DataFrame (>= 40 rows)
 n_rows = 50
 restaurants = [
     "Spice Route",
@@ -196,7 +97,6 @@ restaurants = [
 cities = ["Vadodara", "Ahmedabad", "Surat"]
 cuisines = ["Indian", "Chinese", "Fast Food"]
 
-# Assign base profiles so realistic restaurants qualify for the filter
 rest_col = np.random.choice(restaurants, size=n_rows)
 ratings = []
 delivery_times = []
@@ -218,37 +118,32 @@ df = pd.DataFrame({
     "cuisine_type": np.random.choice(cuisines, size=n_rows),
 })
 
-# 2. Single method chain with groupby() and agg()
 grouped = df.groupby("restaurant_name").agg(
     mean_order_value=("order_value", "mean"),
     mean_delivery_time=("delivery_time_mins", "mean"),
     mean_rating=("rating", "mean"),
 )
 
-# 3. Filter: mean rating > 4.0 and mean delivery time < 35 mins
 filtered = grouped[
     (grouped["mean_rating"] > 4.0) & (grouped["mean_delivery_time"] < 35)
 ]
 
-# 4. Sort by mean order value descending, reset index, and print
 final_result = (
     filtered.sort_values(by="mean_order_value", ascending=False)
     .reset_index()
     .round(2)
 )
 
-print("=== Top Performing Restaurants (Rating > 4.0 & Delivery Time < 35 mins) ===")
 print(final_result.to_string(index=False))
 
 
-=== TASK 3: Monthly Order Trend Dashboard (section_b_task3.py) ===
+Task 3: Monthly Order Trend Dashboard (section_b_task3.py)
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 np.random.seed(42)
 
-# 1. Generate synthetic 12-month data
 months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 total_orders = np.random.randint(1000, 5001, size=12)
@@ -256,20 +151,17 @@ avg_order_values = np.random.uniform(200, 400, size=12)
 monthly_revenue = total_orders * avg_order_values
 monthly_avg_delivery = np.random.normal(loc=28, scale=4, size=12)
 
-# Simulated 500 delivery times using the generated mean and std
 sim_mean = np.mean(monthly_avg_delivery)
 sim_std = np.std(monthly_avg_delivery)
 simulated_delivery_times = np.random.normal(loc=sim_mean, scale=sim_std, size=500)
 
-# Create 3-subplot figure
 fig, axes = plt.subplots(1, 3, figsize=(18, 5))
-fig.suptitle("Food Delivery Platform - Monthly Performance Dashboard", fontsize=15, fontweight="bold")
+fig.suptitle("Food Delivery Monthly Performance Dashboard", fontsize=15)
 
-# Subplot 1: Line chart of total orders per month
 axes[0].plot(months, total_orders, marker="o", color="#1f77b4", linewidth=2)
 for i, val in enumerate(total_orders):
     axes[0].annotate(
-        f"{val:,}",
+        f"{val}",
         (months[i], val),
         textcoords="offset points",
         xytext=(0, 8),
@@ -282,22 +174,19 @@ axes[0].set_ylabel("Total Orders")
 axes[0].set_ylim(0, max(total_orders) * 1.15)
 axes[0].grid(True, linestyle="--", alpha=0.4)
 
-# Subplot 2: Bar chart of monthly revenue with Rs 8,00,000 threshold
 threshold = 800000
 bar_colors = ["green" if rev > threshold else "red" for rev in monthly_revenue]
-axes[1].bar(months, monthly_revenue / 1e5, color=bar_colors, alpha=0.85)
-axes[1].axhline(threshold / 1e5, color="black", linestyle="--", linewidth=1.5, label="Rs 8,00,000 Threshold")
-axes[1].set_title("Monthly Revenue (in Lakhs Rs)")
+axes[1].bar(months, monthly_revenue / 1e5, color=bar_colors)
+axes[1].axhline(threshold / 1e5, color="black", linestyle="--", label="Rs 8,00,000")
+axes[1].set_title("Monthly Revenue (Rs Lakhs)")
 axes[1].set_xlabel("Month")
-axes[1].set_ylabel("Revenue (Rs Lakhs)")
+axes[1].set_ylabel("Revenue (Lakhs)")
 axes[1].legend()
-axes[1].grid(axis="y", linestyle="--", alpha=0.4)
 
-# Subplot 3: Histogram of 500 simulated delivery times
 sample_mean = np.mean(simulated_delivery_times)
-axes[2].hist(simulated_delivery_times, bins=15, color="#4c72b0", edgecolor="black", alpha=0.8)
-axes[2].axvline(sample_mean, color="red", linestyle="--", linewidth=2, label=f"Mean ({sample_mean:.1f} min)")
-axes[2].set_title("Distribution of Delivery Times (n=500)")
+axes[2].hist(simulated_delivery_times, bins=15, color="#4c72b0", edgecolor="black")
+axes[2].axvline(sample_mean, color="red", linestyle="--", label="Mean")
+axes[2].set_title("Delivery Time Distribution")
 axes[2].set_xlabel("Delivery Time (mins)")
 axes[2].set_ylabel("Frequency")
 axes[2].legend()
@@ -305,17 +194,15 @@ axes[2].legend()
 plt.tight_layout(rect=[0, 0, 1, 0.94])
 plt.savefig("food_delivery_dashboard.png", dpi=150)
 plt.close()
-print("Saved: food_delivery_dashboard.png (DPI=150)")
 
 
-=== TASK 4: Full EDA Pipeline - Food Delivery Insights (section_b_task4.py) ===
+Task 4: Full EDA Pipeline - Food Delivery Insights (section_b_task4.py)
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# 1. Generate 200-row dataset using NumPy (seed=7)
 np.random.seed(7)
 n_rows = 200
 
@@ -327,23 +214,14 @@ df = pd.DataFrame({
     "discount_pct": np.random.uniform(0, 30, size=n_rows),
 })
 
-# 2. Introduce 5% nulls in delivery_time_mins and rating using np.random.choice()
 n_nulls = int(0.05 * n_rows)
 for col in ["delivery_time_mins", "rating"]:
     null_indices = np.random.choice(df.index, size=n_nulls, replace=False)
     df.loc[null_indices, col] = np.nan
 
-print("Null counts before imputation:")
-print(df.isnull().sum())
-
-# Fill nulls with respective column medians
 df["delivery_time_mins"] = df["delivery_time_mins"].fillna(df["delivery_time_mins"].median())
 df["rating"] = df["rating"].fillna(df["rating"].median())
 
-print("\nNull counts after imputation:")
-print(df.isnull().sum())
-
-# 3. Derived column & speed_band classification using pd.qcut()
 df["delivery_speed_kmph"] = df["distance_km"] / (df["delivery_time_mins"] / 60.0)
 df["speed_band"] = pd.qcut(
     df["delivery_speed_kmph"],
@@ -351,36 +229,31 @@ df["speed_band"] = pd.qcut(
     labels=["Slow", "Normal", "Fast"],
 )
 
-print("\nSpeed Band Distribution:")
+print(df.head())
+print("\nSpeed Band Counts:")
 print(df["speed_band"].value_counts())
 
-# 4. Seaborn correlation heatmap (DPI >= 150)
 numeric_cols = df.select_dtypes(include=[np.number]).columns
 corr_matrix = df[numeric_cols].corr(method="pearson")
 
 plt.figure(figsize=(9, 7))
-sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap="coolwarm", vmin=-1, vmax=1, linewidths=0.5)
-plt.title("Pearson Correlation Matrix - Food Delivery Features")
+sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap="coolwarm", vmin=-1, vmax=1)
+plt.title("Pearson Correlation Matrix")
 plt.tight_layout()
 plt.savefig("correlation_heatmap.png", dpi=150)
 plt.close()
-print("\nSaved: correlation_heatmap.png")
 
-# 5. Seaborn pairplot coloured by speed_band (DPI >= 150)
 pairplot_cols = ["order_value", "distance_km", "delivery_time_mins", "rating", "speed_band"]
-g = sns.pairplot(df[pairplot_cols], hue="speed_band", palette="Set2", diag_kind="kde")
-g.fig.suptitle("Food Delivery Feature Pairplot by Speed Band", y=1.02)
+g = sns.pairplot(df[pairplot_cols], hue="speed_band", palette="Set2")
+g.fig.suptitle("Food Delivery Pairplot by Speed Band", y=1.02)
 plt.savefig("pairplot.png", dpi=150, bbox_inches="tight")
 plt.close()
-print("Saved: pairplot.png")
 
 
---------------------------------------------------------------------------------
 SECTION C: MINI CAPSTONE PROJECT (section_c_capstone.py)
---------------------------------------------------------------------------------
 
 import matplotlib
-matplotlib.use("Agg")  # Non-interactive backend so charts are never displayed during menu loop
+matplotlib.use("Agg")
 
 import numpy as np
 import pandas as pd
@@ -388,8 +261,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def generate_and_clean_dataset(n_rows=250, seed=42):
-    """Generate >= 200 rows with NumPy, introduce nulls, and impute all numeric nulls."""
+def load_and_clean_data(n_rows=250, seed=42):
     np.random.seed(seed)
     restaurants = [
         "Spice Route",
@@ -411,29 +283,22 @@ def generate_and_clean_dataset(n_rows=250, seed=42):
         "discount_pct": np.round(np.random.uniform(0, 25, size=n_rows), 1),
     })
 
-    # Introduce 4% nulls in two numeric columns to demonstrate cleaning at startup
     for col in ["delivery_time_mins", "rating"]:
         idx = np.random.choice(df.index, size=int(0.04 * n_rows), replace=False)
         df.loc[idx, col] = np.nan
 
-    # Check and fill any null values in numeric columns
     numeric_cols = df.select_dtypes(include=[np.number]).columns
-    null_total = df[numeric_cols].isnull().sum().sum()
-    if null_total > 0:
-        for col in numeric_cols:
-            if df[col].isnull().any():
-                df[col] = df[col].fillna(df[col].median())
-        print(f"[Startup] Detected and imputed {null_total} null values using column medians.\n")
+    for col in numeric_cols:
+        if df[col].isnull().any():
+            df[col] = df[col].fillna(df[col].median())
 
     return df
 
 
-# Option 1: Primary module -> NumPy statistical functions
-def option_summary_statistics(df):
-    print("\n--- (1) Summary Statistics (NumPy) ---")
+def summary_statistics(df):
+    print("\nSummary Statistics:")
     numeric_cols = df.select_dtypes(include=[np.number]).columns
-    print(f"{'Column':<20} {'Mean':>10} {'Median':>10} {'Std Dev':>10} {'Min':>10} {'Max':>10}")
-    print("-" * 72)
+    print(f"{'Column':<20} {'Mean':>10} {'Median':>10} {'Std':>10} {'Min':>10} {'Max':>10}")
     for col in numeric_cols:
         arr = df[col].to_numpy()
         print(
@@ -442,46 +307,38 @@ def option_summary_statistics(df):
         )
 
 
-# Option 2: Primary module -> Matplotlib subplots
-def option_distribution_analysis(df):
-    print("\n--- (2) Distribution Analysis (Matplotlib Subplots) ---")
+def distribution_analysis(df):
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-    fig.suptitle("Order Value & Delivery Time Distributions", fontsize=13, fontweight="bold")
+    fig.suptitle("Order Value and Delivery Time Distributions")
 
-    axes[0].hist(df["order_value"], bins=20, color="#2a9d8f", edgecolor="black", alpha=0.8)
-    axes[0].set_title("Order Value Distribution")
+    axes[0].hist(df["order_value"], bins=20, color="#2a9d8f", edgecolor="black")
+    axes[0].set_title("Order Value")
     axes[0].set_xlabel("Order Value (Rs)")
-    axes[0].set_ylabel("Frequency")
+    axes[0].set_ylabel("Count")
 
-    axes[1].hist(df["delivery_time_mins"], bins=20, color="#e76f51", edgecolor="black", alpha=0.8)
-    axes[1].set_title("Delivery Time Distribution")
+    axes[1].hist(df["delivery_time_mins"], bins=20, color="#e76f51", edgecolor="black")
+    axes[1].set_title("Delivery Time")
     axes[1].set_xlabel("Delivery Time (mins)")
-    axes[1].set_ylabel("Frequency")
+    axes[1].set_ylabel("Count")
 
     plt.tight_layout(rect=[0, 0, 1, 0.93])
-    filename = "capstone_distribution_analysis.png"
-    plt.savefig(filename, dpi=150)
+    plt.savefig("capstone_distribution_analysis.png", dpi=150)
     plt.close()
-    print(f"Chart saved successfully as '{filename}' (DPI=150).")
+    print("\nSaved capstone_distribution_analysis.png")
 
 
-# Option 3: Primary module -> Seaborn heatmap
-def option_correlation_heatmap(df):
-    print("\n--- (3) Correlation Heatmap (Seaborn) ---")
+def correlation_heatmap(df):
     corr = df.select_dtypes(include=[np.number]).corr(method="pearson")
     plt.figure(figsize=(8, 6))
-    sns.heatmap(corr, annot=True, fmt=".2f", cmap="coolwarm", vmin=-1, vmax=1, linewidths=0.5)
-    plt.title("Pearson Correlation Heatmap - Food Delivery Metrics")
+    sns.heatmap(corr, annot=True, fmt=".2f", cmap="coolwarm", vmin=-1, vmax=1)
+    plt.title("Correlation Heatmap")
     plt.tight_layout()
-    filename = "capstone_correlation_heatmap.png"
-    plt.savefig(filename, dpi=150)
+    plt.savefig("capstone_correlation_heatmap.png", dpi=150)
     plt.close()
-    print(f"Chart saved successfully as '{filename}' (DPI=150).")
+    print("\nSaved capstone_correlation_heatmap.png")
 
 
-# Option 4: Primary module -> Pandas groupby aggregation
-def option_restaurant_performance(df):
-    print("\n--- (4) Restaurant Performance Report (Pandas GroupBy) ---")
+def restaurant_performance(df):
     report = (
         df.groupby("restaurant_name")
         .agg(
@@ -493,94 +350,74 @@ def option_restaurant_performance(df):
         .sort_values(by="avg_rating", ascending=False)
         .round(2)
     )
+    print("\nRestaurant Performance Report:")
     print(report.to_string())
 
 
-def print_exit_summary_report(df):
-    print("\n" + "=" * 60)
-    print("FINAL EDA SUMMARY REPORT")
-    print("=" * 60)
+def exit_summary(df):
+    print("\nFINAL SUMMARY REPORT")
+    print("-" * 40)
 
-    # 1. Top 3 restaurants by mean rating
     top3 = (
         df.groupby("restaurant_name")["rating"]
         .mean()
         .sort_values(ascending=False)
         .head(3)
     )
-    print("\n1. Top 3 Restaurants by Mean Rating:")
+    print("Top 3 Restaurants by Mean Rating:")
     for rank, (name, score) in enumerate(top3.items(), start=1):
-        print(f"   {rank}. {name}: {score:.2f}")
+        print(f"{rank}. {name}: {score:.2f}")
 
-    # 2. Numeric column pair with highest absolute Pearson correlation
     corr = df.select_dtypes(include=[np.number]).corr(method="pearson").abs()
     np.fill_diagonal(corr.values, 0)
     max_pair = corr.stack().idxmax()
     actual_corr = df[max_pair[0]].corr(df[max_pair[1]])
-    print(
-        f"\n2. Highest Absolute Pearson Correlation Pair:\n"
-        f"   {max_pair[0]} & {max_pair[1]} (r = {actual_corr:.4f})"
-    )
+    print(f"\nHighest Correlation Pair: {max_pair[0]} and {max_pair[1]} (r = {actual_corr:.4f})")
 
-    # 3. Overall mean and std of delivery time
     dt_mean = np.mean(df["delivery_time_mins"])
     dt_std = np.std(df["delivery_time_mins"])
-    print(
-        f"\n3. Overall Delivery Time Statistics:\n"
-        f"   Mean = {dt_mean:.2f} mins | Std Dev = {dt_std:.2f} mins"
-    )
-    print("=" * 60)
+    print(f"Delivery Time -> Mean: {dt_mean:.2f} mins, Std Dev: {dt_std:.2f} mins")
 
 
 def main():
-    df = generate_and_clean_dataset(n_rows=250)
+    df = load_and_clean_data(n_rows=250)
 
     while True:
-        print("\n=== Food Delivery Analytics Console ===")
+        print("\nFood Delivery Analytics Menu")
         print("1. Summary Statistics")
         print("2. Distribution Analysis")
         print("3. Correlation Heatmap")
         print("4. Restaurant Performance Report")
         print("5. Exit")
 
-        choice = input("Select an option (1-5): ").strip()
+        choice = input("Enter your choice (1-5): ").strip()
 
         if choice == "1":
-            option_summary_statistics(df)
+            summary_statistics(df)
         elif choice == "2":
-            option_distribution_analysis(df)
+            distribution_analysis(df)
         elif choice == "3":
-            option_correlation_heatmap(df)
+            correlation_heatmap(df)
         elif choice == "4":
-            option_restaurant_performance(df)
+            restaurant_performance(df)
         elif choice == "5":
-            print_exit_summary_report(df)
+            exit_summary(df)
             break
         else:
-            print("Invalid selection. Please enter a number from 1 to 5.")
+            print("Invalid option, please try again.")
 
 
 if __name__ == "__main__":
     main()
 
 
---------------------------------------------------------------------------------
 SECTION D: AI-AUGMENTED LEARNING
---------------------------------------------------------------------------------
 
-1. EXACT PROMPT GIVEN TO THE AI TOOL:
--------------------------------------
-"Write a Python script using NumPy, Pandas, Matplotlib, and Seaborn that
-generates a synthetic food delivery dataset with 5 numeric columns
-(order_value, distance_km, delivery_time_mins, rating, discount_pct) and 1
-categorical column (cuisine_type). Create a Seaborn pairplot of all numeric
-columns coloured by cuisine_type and save it as a PNG. Then compute the
-Pearson correlation matrix, plot it as an annotated Seaborn heatmap with a
-diverging colour palette, and save it as a separate PNG at DPI 200."
+1. Prompt Used:
+Write a Python script using NumPy, Pandas, Matplotlib, and Seaborn that creates a synthetic food delivery dataset with 5 numeric columns (order_value, distance_km, delivery_time_mins, rating, discount_pct) and 1 categorical column (cuisine_type). Generate a Seaborn pairplot of the numeric columns coloured by cuisine_type and save it as a PNG. Then compute the Pearson correlation matrix, plot it as an annotated Seaborn heatmap with a diverging colour palette, and save it as a separate PNG at DPI 200.
 
+2. Original AI Code:
 
-2. ORIGINAL AI CODE (CONTAINS BUGS / LIMITATIONS):
---------------------------------------------------
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -596,18 +433,15 @@ df = pd.DataFrame({
     "cuisine_type": np.random.choice(["Indian", "Chinese", "Fast Food"], 150),
 })
 
-# Pairplot
 sns.pairplot(df, hue="cuisine_type")
-plt.savefig("ai_pairplot.png")  # Limitation 1: Low default DPI & no plt.close()
+plt.savefig("ai_pairplot.png")
 
-# Correlation Heatmap
-corr = df.corr()  # BUG: ValueError in Pandas 2.x because 'cuisine_type' is string/object
+corr = df.corr()
 sns.heatmap(corr, annot=True, cmap="coolwarm")
-plt.savefig("ai_correlation_heatmap.png", dpi=200)  # Limitation 2: Clipped labels without tight_layout()
+plt.savefig("ai_correlation_heatmap.png", dpi=200)
 
+3. Corrected Code (section_d_corrected.py):
 
-3. CORRECTED VERSION (section_d_corrected.py):
-----------------------------------------------
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -623,30 +457,19 @@ df = pd.DataFrame({
     "cuisine_type": np.random.choice(["Indian", "Chinese", "Fast Food"], 150),
 })
 
-# Fix 1: Explicit DPI=150, bbox_inches='tight', and plt.close() to prevent figure overlap
 g = sns.pairplot(df, hue="cuisine_type", diag_kind="kde")
-g.fig.suptitle("Food Delivery Numeric Features by Cuisine Type", y=1.02)
+g.fig.suptitle("Food Delivery Features by Cuisine Type", y=1.02)
 plt.savefig("food_delivery_pairplot.png", dpi=150, bbox_inches="tight")
 plt.close()
 
-# Fix 2: Pass numeric_only=True to df.corr() so string column 'cuisine_type' doesn't raise ValueError
 corr = df.corr(method="pearson", numeric_only=True)
 
-# Fix 3: Create fresh figure, set vmin/vmax, and apply tight_layout() before saving at DPI 200
 plt.figure(figsize=(8, 6))
-sns.heatmap(corr, annot=True, fmt=".2f", cmap="coolwarm", vmin=-1, vmax=1, linewidths=0.5)
-plt.title("Food Delivery Feature Correlation Heatmap")
+sns.heatmap(corr, annot=True, fmt=".2f", cmap="coolwarm", vmin=-1, vmax=1)
+plt.title("Food Delivery Correlation Heatmap")
 plt.tight_layout()
 plt.savefig("food_delivery_correlation_heatmap.png", dpi=200)
 plt.close()
 
-
-4. EXPLANATION OF CHANGES (3-4 LINE NOTE):
-------------------------------------------
-In Pandas 2.x, calling df.corr() directly on a DataFrame containing the string
-column 'cuisine_type' raises a ValueError, so I added numeric_only=True to
-compute correlations strictly on numeric columns. I also added plt.close() after
-saving the pairplot and initialized a new plt.figure() for the heatmap so the
-two plots do not overlap in memory. Finally, I added plt.tight_layout() and
-dpi=150 / bbox_inches="tight" to prevent axis labels from getting clipped in the
-exported PNGs.
+4. Explanation of Changes:
+When I ran the AI's code, df.corr() threw a ValueError in Pandas 2.x because the cuisine_type column contains strings, so I added numeric_only=True to fix it. I also added plt.close() after saving the pairplot and created a fresh plt.figure() for the heatmap so the two charts would not overlap. Finally, I added dpi=150, bbox_inches="tight", and plt.tight_layout() so the saved PNGs come out sharp without cutting off any labels.
